@@ -1,32 +1,39 @@
-# Інструкція з запуску проекту за допомогою Docker Compose
+version: '3.8'
 
-Цей документ містить інструкції для автоматичного розгортання та керування TodoApp та базою даних MySQL за допомогою інструменту Docker Compose.
+services:
+  db:
+    image: mysql:8.0  # Використовуємо офіційний образ замість кастомного Dockerfile
+    container_name: mysql-container
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secure_pass
+      MYSQL_DATABASE: app_db
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: 1234
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    # Перевірка працездатності: перевіряємо, чи MySQL повністю готовий приймати з'єднання
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "app_user", "-p1234"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
----
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: django-app
+    ports:
+      - "8000:8000"
+    # Чекаємо не просто старту контейнера db, а саме його повної готовності (healthcheck)
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - MYSQL_HOST=db
 
-## Як запустити проект
-
-Щоб зібрати образи, створити мережу, підключити Volume та запустити обидва контейнери однією командою, виконайте в терміналі:
-
-```bash
-docker-compose up -d --build
-```
-
-Після цього додаток автоматично зачекає ініціалізації бази даних, застосує міграції та підніме вебсервер.
-
----
-
-## Доступ до вебдодатка у браузері
-
-Відкрийте будь-який веббраузер та перейдіть за адресою:
-* **http://localhost:8000**
-
----
-
-## Як зупинити контейнери
-
-Щоб зупинити роботу додатків та очистити задіяні контейнери й мережі (із збереженням ваших даних у MySQL Volume), виконайте:
-
-```bash
-docker-compose down
-```
+volumes:
+  mysql_data:
