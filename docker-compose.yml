@@ -2,30 +2,34 @@ version: '3.8'
 
 services:
   db:
-    build:
-      context: .
-      dockerfile: Dockerfile.mysql
+    image: mysql:8.0
     container_name: mysql-container
     environment:
       MYSQL_ROOT_PASSWORD: root_secure_pass
       MYSQL_DATABASE: app_db
       MYSQL_USER: app_user
-      MYSQL_PASSWORD: 1234
+      MYSQL_PASSWORD: '1234'
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   web:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: django-app
-    restart: always  # <-- ДОДАЙТЕ ЦЕЙ РЯДОК
+    restart: always
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       - MYSQL_HOST=db
 
